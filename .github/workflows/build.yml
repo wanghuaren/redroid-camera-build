@@ -1,0 +1,82 @@
+name: build-redroid-camera
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Checkout (workflow repo)
+        uses: actions/checkout@v4
+
+      - name: Maximize disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/lib/jvm || true
+          sudo docker image prune -af || true
+          sudo mkdir -p /mnt/workspace && sudo chown -R $USER:$USER /mnt/workspace
+          df -h
+
+      - name: Install repo tool
+        run: |
+          mkdir -p /mnt/workspace/bin
+          curl -s https://storage.googleapis.com/git-repo-downloads/repo > /mnt/workspace/bin/repo
+          chmod a+x /mnt/workspace/bin/repo
+          echo "/mnt/workspace/bin" >> $GITHUB_PATH
+
+      - name: Init AOSP 12 tree
+        working-directory: /mnt/workspace
+        run: |
+          git config --global user.email "builder@example.com"
+          git config --global user.name "builder"
+          repo init -u https://android.googlesource.com/platform/manifest --git-lfs --depth=1 -b android-12.0.0_r34
+          cp -r $GITHUB_WORKSPACE/local_manifests/. .repo/local_manifests/
+
+      - name: Repo sync (long)
+        working-directory: /mnt/workspace
+        run: repo sync -c --no-tags --fail-fast -j8
+
+      - name: Apply redroid patches
+        working-directory: /mnt/workspace
+        run: |
+          git clone --depth=1 https://github.com/remote-android/redroid-patches.git /tmp/redroid-patches
+          bash /tmp/redroid-patches/apply-patch.sh /mnt/workspace || echo "some patches failed, continuing"
+
+      - name: Apply camera HAL patch
+        working-directory: /mnt/workspace/device/redroid
+        run: git apply --check $GITHUB_WORKSPACE/patches/camera-hal.patch && git apply $GITHUB_WORKSPACE/patches/camera-hal.patch && echo "camera patch applied"
+
+      - name: Free git metadata disk (not needed for build)
+        working-directory: /mnt/workspace
+        run: |
+          find . -maxdepth 3 -name ".git" -type d ! -path "./.repo/manifests*" -exec rm -rf {} + 2>/dev/null || true
+          rm -rf .repo/projects .repo/project-objects 2>/dev/null || true
+          du -sh /mnt/workspace
+          df -h
+
+      - name: Build (m -j4)
+        working-directory: /mnt/workspace
+        run: |
+          source build/envsetup.sh
+          lunch redroid_arm64-userdebug
+          m -j4
+
+      - name: Package docker image
+        working-directory: /mnt/workspace/out/target/product/redroid_arm64
+        run: |
+          debugfs -R "rdump / /mnt/workspace/rootfs" system.img
+          sudo tar --xattrs -c -C /mnt/workspace/rootfs . | docker import \
+            -c 'ENTRYPOINT ["/init", "androidboot.hardware=redroid"]' - redroid-camera:12.0.0
+          docker save redroid-camera:12.0.0 | gzip > /mnt/workspace/redroid-camera-arm64.tar.gz
+          ls -la /mnt/workspace/redroid-camera-arm64.tar.gz
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redroid-camera-arm64
+          path: /mnt/workspace/redroid-camera-arm64.tar.gz
+          retention-days: 7
+          compression-level: 0
