@@ -35,6 +35,26 @@ jobs:
           repo init -u https://android.googlesource.com/platform/manifest --git-lfs --depth=1 -b android-12.0.0_r34
           cp -r $GITHUB_WORKSPACE/local_manifests/. .repo/local_manifests/
 
+      - name: Drop remove-project entries absent from branch manifest
+        working-directory: /mnt/workspace
+        run: |
+          python3 - <<'EOF'
+          import glob, os, re
+          names = set()
+          for f in glob.glob('.repo/manifests/*.xml'):
+              names |= set(re.findall(r'<project\s[^>]*name="([^"]+)"', open(f, encoding='utf-8', errors='replace').read()))
+          print(f'manifest projects: {len(names)}')
+          for f in glob.glob('.repo/local_manifests/*.xml'):
+              s = open(f, encoding='utf-8').read()
+              def drop(m):
+                  return '' if m.group(1) not in names else m.group(0)
+              s2 = re.sub(r'[ \t]*<remove-project name="([^"]+)" */>\r?\n?', drop, s)
+              dropped = len(re.findall(r'<remove-project', s)) - len(re.findall(r'<remove-project', s2))
+              if s2 != s:
+                  open(f, 'w', encoding='utf-8').write(s2)
+                  print(f'{f}: dropped {dropped} non-existent remove-project entries')
+          EOF
+
       - name: Repo sync (long)
         working-directory: /mnt/workspace
         run: repo sync -c --no-tags --fail-fast -j8
