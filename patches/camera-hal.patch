@@ -1,0 +1,39 @@
+diff --git a/manifest.xml b/manifest.xml
+index acb0a15..53342bf 100644
+--- a/manifest.xml
++++ b/manifest.xml
+@@ -53,4 +53,13 @@
+             <instance>default</instance>
+         </interface>
+     </hal>
++    <hal format="hidl">
++        <name>android.hardware.camera.provider</name>
++        <transport>hwbinder</transport>
++        <version>2.4</version>
++        <interface>
++            <name>ICameraProvider</name>
++            <instance>external/0</instance>
++        </interface>
++    </hal>
+ </manifest>
+diff --git a/redroid.mk b/redroid.mk
+index 7733ffd..6a7e1fd 100644
+--- a/redroid.mk
++++ b/redroid.mk
+@@ -97,6 +97,7 @@ endif
+ DEVICE_MANIFEST_FILE += device/redroid/android.hardware.bluetooth@1.1.xml
+ 
+ PRODUCT_PACKAGES += android.hardware.bluetooth@1.1-service.sim
++PRODUCT_PACKAGES += android.hardware.camera.provider@2.4-external-service
+ 
+ 
+ PRODUCT_SOONG_NAMESPACES += frameworks/av/services/audiopolicy/config
+@@ -117,6 +118,8 @@ PRODUCT_COPY_FILES += \
+     frameworks/native/data/etc/android.hardware.vulkan.compute-0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.compute-0.xml \
+     frameworks/native/data/etc/android.hardware.vulkan.level-1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.level-1.xml \
+     frameworks/native/data/etc/android.hardware.vulkan.version-1_1.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.vulkan.version-1_1.xml \
++    frameworks/native/data/etc/android.hardware.camera.external.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.external.xml \
++    frameworks/native/data/etc/android.hardware.camera.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.hardware.camera.xml \
+     frameworks/native/data/etc/handheld_core_hardware.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/handheld_core_hardware.xml \
+     $(LOCAL_PATH)/redroid-removed-permissions.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/redroid-removed-permissions.xml \
+     $(LOCAL_PATH)/init.redroid.rc:$(TARGET_COPY_OUT_VENDOR)/etc/init/init.redroid.rc \
