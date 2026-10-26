@@ -20,8 +20,9 @@ jobs:
           sudo mkdir -p /mnt/workspace && sudo chown -R $USER:$USER /mnt/workspace
           df -h
 
-      - name: Install repo tool
+      - name: Install repo tool + xmllint
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
           mkdir -p /mnt/workspace/bin
           curl -s https://storage.googleapis.com/git-repo-downloads/repo > /mnt/workspace/bin/repo
           chmod a+x /mnt/workspace/bin/repo
@@ -33,41 +34,48 @@ jobs:
           git config --global user.email "builder@example.com"
           git config --global user.name "builder"
           repo init -u https://android.googlesource.com/platform/manifest --git-lfs --depth=1 -b android-12.0.0_r34
-          cp -r $GITHUB_WORKSPACE/local_manifests/. .repo/local_manifests/
+          cp -r $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
+          ls -la .repo/local_manifests/
+          test -f .repo/local_manifests/redroid.xml || { echo "FATAL: redroid.xml missing"; exit 1; }
 
       - name: Drop remove-project entries absent from branch manifest
         working-directory: /mnt/workspace
         run: |
-          python3 - <<'EOF'
-          import glob, os, re
-          names = set()
-          for f in glob.glob('.repo/manifests/*.xml'):
-              names |= set(re.findall(r'<project\s[^>]*name="([^"]+)"', open(f, encoding='utf-8', errors='replace').read()))
-          print(f'manifest projects: {len(names)}')
+          python3 << 'PYEOF'
+          import glob, re
+          s = open('.repo/manifests/default.xml').read()
+          names = set(re.findall(r'<project[^>]*name="([^"]+)"', s))
           for f in glob.glob('.repo/local_manifests/*.xml'):
-              s = open(f, encoding='utf-8').read()
-              def drop(m):
-                  return '' if m.group(1) not in names else m.group(0)
-              s2 = re.sub(r'[ \t]*<remove-project name="([^"]+)" */>\r?\n?', drop, s)
-              dropped = len(re.findall(r'<remove-project', s)) - len(re.findall(r'<remove-project', s2))
-              if s2 != s:
-                  open(f, 'w', encoding='utf-8').write(s2)
-                  print(f'{f}: dropped {dropped} non-existent remove-project entries')
-          EOF
+              s2 = open(f).read()
+              def keep(m):
+                  return m.group(0) if m.group(1) in names else ''
+              s3 = re.sub(r'[ \t]*<remove-project name="([^"]+)" */>\r?\n?', keep, s2)
+              dropped = len(re.findall(r'<remove-project', s2)) - len(re.findall(r'<remove-project', s3))
+              open(f, 'w').write(s3)
+              print(f'{f}: dropped {dropped} non-existent remove-project entries')
+          PYEOF
 
       - name: Repo sync (long)
         working-directory: /mnt/workspace
         run: repo sync -c --no-tags --fail-fast -j8
 
-      - name: Apply redroid patches
+      - name: Verify device tree exists
+        working-directory: /mnt/workspace
+        run: |
+          ls -la device/redroid/ || { echo "=== diagnostic: repo manifest redroid entries ==="; repo manifest | grep -i redroid; echo "=== device dirs ==="; ls device/; exit 1; }
+          test -f device/redroid/redroid.mk || { echo "FATAL: redroid.mk missing"; exit 1; }
+
+      - name: Apply redroid patches (explicit tag)
         working-directory: /mnt/workspace
         run: |
           git clone --depth=1 https://github.com/remote-android/redroid-patches.git /tmp/redroid-patches
-          bash /tmp/redroid-patches/apply-patch.sh /mnt/workspace || echo "some patches failed, continuing"
+          bash /tmp/redroid-patches/apply-patch.sh /mnt/workspace android-12.0.0_r34
 
       - name: Apply camera HAL patch
         working-directory: /mnt/workspace/device/redroid
-        run: git apply --check $GITHUB_WORKSPACE/patches/camera-hal.patch && git apply $GITHUB_WORKSPACE/patches/camera-hal.patch && echo "camera patch applied"
+        run: |
+          ls -la
+          git apply --check $GITHUB_WORKSPACE/patches/camera-hal.patch && git apply $GITHUB_WORKSPACE/patches/camera-hal.patch && echo "camera patch applied"
 
       - name: Free git metadata disk (not needed for build)
         working-directory: /mnt/workspace
