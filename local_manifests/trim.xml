@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+    <!-- trim repos not needed for redroid arm64 build (save ~14G) -->
+    <remove-project name="platform/cts" />
+    <remove-project name="platform/cts-common" />
+    <remove-project name="platform/tools/cts/tradefed" />
+    <remove-project name="platform/prebuilts/abi" />
+    <remove-project name="platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9" />
+    <remove-project name="platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9" />
+    <remove-project name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8" />
+    <remove-project name="platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.15-4.8" />
+    <remove-project name="device/google/atv" />
+    <remove-project name="device/google_car" />
+    <remove-project name="device/google/contexthub" />
+    <remove-project name="device/google/cuttlefish" />
+    <remove-project name="device/google/cuttlefish_prebuilts" />
+    <remove-project name="device/google/gs101" />
+    <remove-project name="device/google/gs101-kernel" />
+    <remove-project name="device/google/gs201" />
+    <remove-project name="device/google/gs201-kernel" />
+    <remove-project name="device/google/raviole" />
+    <remove-project name="device/google/redfin" />
+    <remove-project name="device/google/redfin-kernel" />
+    <remove-project name="device/google/sunfish" />
+    <remove-project name="device/google/trout" />
+    <remove-project name="device/google/barbet" />
+    <remove-project name="device/google/bluejay" />
+    <remove-project name="device/google/bramble" />
+    <remove-project name="device/google/coral" />
+    <remove-project name="device/google/felix" />
+    <remove-project name="device/google/generic" />
+    <remove-project name="device/google/lynx" />
+    <remove-project name="device/google/oriole" />
+    <remove-project name="device/google/pantah" />
+    <remove-project name="device/google/raven" />
+    <remove-project name="device/google/tangorpro" />
+    <remove-project name="device/google/turnstile" />
+    <remove-project name="device/google/akita" />
+    <remove-project name="device/google/shusky" />
+    <remove-project name="device/google/zuma" />
+    <remove-project name="device/google/zumapro" />
+    <remove-project name="kernel/common" />
+    <remove-project name="kernel/configs" />
+    <remove-project name="kernel/tests" />
+</manifest>
