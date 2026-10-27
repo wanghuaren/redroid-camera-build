@@ -37,29 +37,10 @@ jobs:
           mkdir -p .repo/local_manifests
           git clone --depth=1 https://github.com/remote-android/local_manifests.git /tmp/remote-lm -b 12.0.0
           cp /tmp/remote-lm/redroid.xml .repo/local_manifests/
-          cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           ls -la .repo/local_manifests/
           test -f .repo/local_manifests/redroid.xml || { echo "FATAL: redroid.xml missing"; exit 1; }
-          test -f .repo/local_manifests/trim.xml || { echo "FATAL: trim.xml missing"; exit 1; }
 
-      - name: Drop remove-project entries absent from branch manifest
-        working-directory: /mnt/workspace
-        run: |
-          python3 << 'PYEOF'
-          import glob, re
-          s = open('.repo/manifests/default.xml').read()
-          names = set(re.findall(r'<project[^>]*name="([^"]+)"', s))
-          for f in glob.glob('.repo/local_manifests/*.xml'):
-              s2 = open(f).read()
-              def keep(m):
-                  return m.group(0) if m.group(1) in names else ''
-              s3 = re.sub(r'[ \t]*<remove-project name="([^"]+)" */>\r?\n?', keep, s2)
-              dropped = len(re.findall(r'<remove-project', s2)) - len(re.findall(r'<remove-project', s3))
-              open(f, 'w').write(s3)
-              print(f'{f}: dropped {dropped} non-existent remove-project entries')
-          PYEOF
-
-      - name: Repo sync (long)
+      - name: Repo sync FULL (long)
         working-directory: /mnt/workspace
         run: repo sync -c --no-tags --fail-fast -j8
 
@@ -88,15 +69,6 @@ jobs:
           rm -rf .repo/projects .repo/project-objects 2>/dev/null || true
           du -sh /mnt/workspace
           df -h
-
-      - name: Strip cts_defaults refs (cts repo trimmed)
-        working-directory: /mnt/workspace
-        run: |
-          grep -rl 'defaults: \["cts_defaults"\]' --include="Android.bp" . 2>/dev/null | while read f; do
-            sed -i '/defaults: \["cts_defaults"\],/d' "$f"
-            echo "stripped: $f"
-          done
-          echo "remaining refs: $(grep -rl 'cts_defaults' --include='Android.bp' . 2>/dev/null | wc -l)"
 
       - name: Build (m -j4)
         working-directory: /mnt/workspace
