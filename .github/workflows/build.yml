@@ -13,11 +13,20 @@ jobs:
       - name: Checkout (workflow repo)
         uses: actions/checkout@v4
 
-      - name: Maximize disk space
+      - name: Maximize disk space (deep clean)
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/lib/jvm || true
           sudo docker image prune -af || true
           sudo mkdir -p /mnt/workspace && sudo chown -R $USER:$USER /mnt/workspace
+          sudo rm -rf /usr/local/mysql /usr/local/MySQL /var/lib/mysql /var/lib/postgresql /etc/mysql /usr/lib/mysql || true
+          sudo rm -rf /usr/share/miniconda /usr/local/miniconda /opt/conda || true
+          sudo rm -rf /usr/local/rubies /usr/lib/ruby /var/lib/gems /usr/local/lib/ruby /home/runner/.rubies || true
+          sudo rm -rf /usr/share/swift /usr/local/swift /usr/local/erlang /usr/local/julia /usr/local/elixir /usr/local/php /etc/php || true
+          sudo rm -rf /usr/local/llvm /usr/lib/llvm-* || true
+          sudo rm -f /usr/local/bin/kubectl /usr/local/bin/kind /usr/local/bin/helm /usr/local/bin/minikube /usr/local/bin/kustomize || true
+          sudo rm -rf /opt/google /usr/local/share/chromium /usr/lib/firefox /usr/bin/microsoft-edge || true
+          sudo rm -rf /usr/share/java /usr/share/maven /usr/local/maven || true
+          sudo systemctl stop docker docker.socket 2>/dev/null || true
           df -h
 
       - name: Install repo tool + xmllint
@@ -47,7 +56,7 @@ jobs:
       - name: Verify device tree exists
         working-directory: /mnt/workspace
         run: |
-          ls -la device/redroid/ || { echo "=== diagnostic: repo manifest redroid entries ==="; repo manifest | grep -i redroid; echo "=== device dirs ==="; ls device/; exit 1; }
+          ls -la device/redroid/ || { echo "=== diagnostic ==="; repo manifest | grep -i redroid; ls device/; exit 1; }
           test -f device/redroid/redroid.mk || { echo "FATAL: redroid.mk missing"; exit 1; }
 
       - name: Apply redroid patches (explicit tag)
@@ -76,13 +85,6 @@ jobs:
           du -sh /mnt/workspace
           df -h
 
-      - name: libncurses5 compat (old AOSP clang needs it)
-        run: |
-          sudo ln -sf /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
-          sudo ln -sf /usr/lib/x86_64-linux-gnu/libncursesw.so.6 /usr/lib/x86_64-linux-gnu/libncursesw.so.5
-          sudo ln -sf /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
-          ls -la /usr/lib/x86_64-linux-gnu/libncurses.so.5 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
-
       - name: Build (m -j4)
         working-directory: /mnt/workspace
         run: |
@@ -91,19 +93,18 @@ jobs:
           df -h /mnt
           m -j4
 
-      - name: Package docker image
+      - name: Package raw images (no docker needed)
         working-directory: /mnt/workspace/out/target/product/redroid_arm64
         run: |
-          debugfs -R "rdump / /mnt/workspace/rootfs" system.img
-          sudo tar --xattrs -c -C /mnt/workspace/rootfs . | docker import \
-            -c 'ENTRYPOINT ["/init", "androidboot.hardware=redroid"]' - redroid-camera:12.0.0
-          docker save redroid-camera:12.0.0 | gzip > /mnt/workspace/redroid-camera-arm64.tar.gz
-          ls -la /mnt/workspace/redroid-camera-arm64.tar.gz
+          mkdir -p /mnt/workspace/dist
+          cp system.img vendor.img vbmeta.img /mnt/workspace/dist/ 2>/dev/null || true
+          gzip -k -f /mnt/workspace/dist/system.img /mnt/workspace/dist/vendor.img
+          ls -la /mnt/workspace/dist/
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
         with:
           name: redroid-camera-arm64
-          path: /mnt/workspace/redroid-camera-arm64.tar.gz
+          path: /mnt/workspace/dist/
           retention-days: 7
           compression-level: 0
