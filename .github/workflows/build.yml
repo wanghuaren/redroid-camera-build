@@ -89,11 +89,21 @@ jobs:
           du -sh /mnt/workspace
           df -h
 
+      - name: Strip cts_defaults refs (cts repo trimmed)
+        working-directory: /mnt/workspace
+        run: |
+          grep -rl 'defaults: \["cts_defaults"\]' --include="Android.bp" . 2>/dev/null | while read f; do
+            sed -i '/defaults: \["cts_defaults"\],/d' "$f"
+            echo "stripped: $f"
+          done
+          echo "remaining refs: $(grep -rl 'cts_defaults' --include='Android.bp' . 2>/dev/null | wc -l)"
+
       - name: Build (m -j4)
         working-directory: /mnt/workspace
         run: |
           source build/envsetup.sh
           lunch redroid_arm64-userdebug
+          df -h /mnt
           m -j4
 
       - name: Package docker image
