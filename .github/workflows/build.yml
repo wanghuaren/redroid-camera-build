@@ -34,9 +34,12 @@ jobs:
           git config --global user.email "builder@example.com"
           git config --global user.name "builder"
           repo init -u https://android.googlesource.com/platform/manifest --git-lfs --depth=1 -b android-12.0.0_r34
-          cp -r $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
+          git clone --depth=1 https://github.com/remote-android/local_manifests.git /tmp/remote-lm -b 12.0.0
+          cp /tmp/remote-lm/redroid.xml .repo/local_manifests/
+          cp $GITHUB_WORKSPACE/local_manifests/*.xml .repo/local_manifests/
           ls -la .repo/local_manifests/
           test -f .repo/local_manifests/redroid.xml || { echo "FATAL: redroid.xml missing"; exit 1; }
+          test -f .repo/local_manifests/trim.xml || { echo "FATAL: trim.xml missing"; exit 1; }
 
       - name: Drop remove-project entries absent from branch manifest
         working-directory: /mnt/workspace
