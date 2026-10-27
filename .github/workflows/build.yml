@@ -70,6 +70,13 @@ jobs:
           du -sh /mnt/workspace
           df -h
 
+      - name: libncurses5 compat (old AOSP clang needs it)
+        run: |
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libncursesw.so.6 /usr/lib/x86_64-linux-gnu/libncursesw.so.5
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libtinfo.so.6 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
+          ls -la /usr/lib/x86_64-linux-gnu/libncurses.so.5 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
+
       - name: Build (m -j4)
         working-directory: /mnt/workspace
         run: |
