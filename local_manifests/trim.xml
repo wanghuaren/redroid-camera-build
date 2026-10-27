@@ -39,7 +39,5 @@
     <remove-project name="device/google/shusky" />
     <remove-project name="device/google/zuma" />
     <remove-project name="device/google/zumapro" />
-    <remove-project name="kernel/common" />
-    <remove-project name="kernel/configs" />
-    <remove-project name="kernel/tests" />
+    <!-- NOTE: kernel/* repos MUST stay: hardware/interfaces needs kernel-config-soong-rules -->
 </manifest>
