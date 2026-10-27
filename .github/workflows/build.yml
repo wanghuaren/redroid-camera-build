@@ -62,6 +62,12 @@ jobs:
           ls -la
           git apply --check $GITHUB_WORKSPACE/patches/camera-hal.patch && git apply $GITHUB_WORKSPACE/patches/camera-hal.patch && echo "camera patch applied"
 
+      - name: Switch external camera service to 64-bit (for arm64_only target)
+        working-directory: /mnt/workspace
+        run: |
+          sed -i 's/compile_multilib: "32",/compile_multilib: "first",/' hardware/interfaces/camera/provider/2.4/default/Android.bp
+          grep -n "compile_multilib" hardware/interfaces/camera/provider/2.4/default/Android.bp
+
       - name: Free git metadata disk (not needed for build)
         working-directory: /mnt/workspace
         run: |
@@ -81,7 +87,7 @@ jobs:
         working-directory: /mnt/workspace
         run: |
           source build/envsetup.sh
-          lunch redroid_arm64-userdebug
+          lunch redroid_arm64_only-userdebug
           df -h /mnt
           m -j4
 
